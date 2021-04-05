@@ -54,7 +54,7 @@ const puppeteer = {
 
 
 export default {
-  every_xms: 1000 * 10,
+  every_xms: 1000 * 60 * 60 * 3,
   puppeteer,
   base_url: {
     root: "https://www.bursamalaysia.com",
