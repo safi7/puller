@@ -3,7 +3,7 @@ import config from "../../config";
 import { timer } from "rxjs";
 import moment from "moment-timezone";
 import articleHelper from '../helpers/articles';
-import articleM from "../../shared/data/articles";
+//  import articleM from "../../shared/data/articles";
 import delay from 'delay';
 async function fetchArticles(page) {
   console.log(`------------- fetchArticles ------------`);
@@ -32,12 +32,12 @@ async function fetchArticles(page) {
           console.log(' ------------DONE---------------- ',);
         } catch (err) {
           console.log(' ------------err---------------- ', err.message);
-          await articleM.insertError({ data: err.message, message: 'error-at-xhr-fetching-level' })
+          //  await articleM.insertError({ data: err.message, message: 'error-at-xhr-fetching-level' })
         }
       })
     } catch (err) {
       console.log(' ------------err---------------- ', err.message);
-      await articleM.insertError({ data: err.message, message: 'error-at-opening-level' })
+      // await articleM.insertError({ data: err.message, message: 'error-at-opening-level' })
       await delay(1000 * 60 * 60);
       fetchArticles(page);
     }
@@ -106,12 +106,12 @@ function formatArticles(data) {
 async function storeArticles(data) {
   for (let each of data) {
     if (articleHelper.ensure(each)) {
-      await articleM.insertOne(each);
+      // await articleM.insertOne(each);
     } else {
-      await articleM.insertError({ data: JSON.stringify(each), message: 'incomplete-data-received' });
+      //  await articleM.insertError({ data: JSON.stringify(each), message: 'incomplete-data-received' });
     }
   }
-  console.log(' ------------STORED---------------- ');
+  console.log(' ------------STORED---------------- ', data);
   return;
 }
 
