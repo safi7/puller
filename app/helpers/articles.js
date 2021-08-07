@@ -4,6 +4,26 @@ import moment from "moment";
 
 export default new (class Article {
 
+  getPagination(data) {
+    const info = data.match(/<ul class="pagination"([^]*)<\/ul\>/g);
+    return info ? info[0] : '';
+  }
+
+  getPaginateLi(data) {
+    const info = data.match(/<li id="total_page"([^]*)<\/li\>/g);
+    return info ? info[0] : '';
+  }
+
+  getTotalPages(data) {
+    const info = data.match(/data-val=\d+/g);
+    return info ? info[0] : '';
+  }
+
+  getTotalPagesValue(data) {
+    const info = data.match(/\d+/g);
+    return info ? +info[0] : null;
+  }
+
   getTables(data) {
     const info = data.match(/<table id="table-announcements"([^]*)<\/table\>/g);
     return info ? info[0] : '';

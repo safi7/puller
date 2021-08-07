@@ -1,11 +1,19 @@
 import _ from "lodash";
 import config from "../../config";
-import { timer } from "rxjs";
+import { async, timer } from "rxjs";
 import moment from "moment-timezone";
 import articleHelper from '../helpers/articles';
 import articleM from "../../shared/data/articles";
 import delay from 'delay';
-async function fetchArticles(page) {
+import fs from 'fs-extra';
+var total_pages = 1;
+var page;
+let counter = 0;
+async function fetchArticles(newPage, f12, c_counter = 0) {
+  console.log({ c_counter });
+  page = newPage;
+  counter = c_counter;
+  total_pages = 1;
   console.log(`------------- fetchArticles ------------`);
   // console.log(`[] config`, config);
 
@@ -15,69 +23,61 @@ async function fetchArticles(page) {
       let url_to_go = config.main_url.root;
       console.log(`> ${url_to_go}`);
 
-      await page.goto(url_to_go, { timeout: 60000, waitUntil: ["networkidle0", "networkidle2"] }); // go to website
+      f12.on("Network.responseReceived", async (event) => {
+        const { requestId, response } = event;
+        const { url } = response;
+        let body;
 
-      timer(0, config.every_xms).subscribe(async (counter) => {
-        // every 3 hours to run and look for new articles
-        // we can change this by going to setup file and change every_xms value
-        try {
-          const required_url = prepareUrl(url_to_go);
-          const data = await xhr(page, required_url);
-          console.log(' ------------RECEIVED---------------- ');
-
-          const formated = formatArticles(data)
-          console.log(`------------ FORMSTED ${formated.length} ----------------`);
-          await storeArticles(formated);
-          console.log({ counter });
-          console.log(' ------------DONE---------------- ',);
-        } catch (err) {
-          console.log(' ------------err---------------- ', err.message);
-          await articleM.insertError({ data: err.message, message: 'error-at-xhr-fetching-level' })
+        switch (true) {
+          case url.includes('/market_information/announcements/company_announcement'):
+            body = await fetchBody(requestId, f12);
+            handleData(body);
+            break;
         }
-      })
+      });
+      url_to_go = prepareUrl(url_to_go, 0);
+      await page.goto(url_to_go, { timeout: 60000, waitUntil: ["networkidle0", "networkidle2"] }); // go to website
     } catch (err) {
       console.log(' ------------err---------------- ', err.message);
       await articleM.insertError({ data: err.message, message: 'error-at-opening-level' })
-      await delay(1000 * 60 * 60);
-      fetchArticles(page);
+      fetchAllPages(page, f12, counter);
     }
 
 
   });
 }
 
-
-async function xhr(page, url) {
-  console.log(' ---------------------------- ',);
-  // console.log({ url });
-  console.log(' ---------------------------- ');
-
-  // run javascript fetch function to get articles for specific date and keyword
-  return await page.evaluate((_url) => {
-    try {
-      return new Promise((resolve, reject) => {
-        try {
-          fetch(_url).then(function (response) {
-            return resolve(response.text());
-          })
-            .catch(error => {
-              reject(error.message);
-            });
-          // resolve('can liao: ' + _url);
-        } catch (error) {
-          reject(error.message);
-        }
-      });
-    } catch (error) {
-      reject(error.message);
-    }
-  }, url);
+async function fetchBody(requestId, f12) {
+  try {
+    await page.waitFor(2000);
+    const response = await f12.send("Network.getResponseBody", {
+      requestId,
+    });
+    return response.body;
+  } catch (error) {
+    console.log("ERR.Network.getResponseBody.skip", error.message);
+    return null;
+  }
 }
+
+async function handleData(data) {
+  try {
+    if (!data) { return; }
+    const formated = formatArticles(data)
+    console.log(`------------ FORMSTED ${formated.length} ----------------`);
+    await storeArticles(formated);
+    console.log(' ------------DONE---------------- ',);
+    formatPagination(data);
+  } catch (err) {
+    console.log(' ------------err---------------- ', err.message);
+    await articleM.insertError({ data: err.message, message: 'error-at-xhr-fetching-level' })
+  }
+}
+
 
 function formatArticles(data) {
   console.log('> formating ...');
-
-  let info = articleHelper.getTables(data); // take all tables
+  let info = articleHelper.getTables(_.cloneDeep(data)); // take all tables
   info = articleHelper.getAnnouncementTable(info); // drop useless tables, take announcements table
   info = articleHelper.getTableBody(info); // get table bodypart, drop head
   info = articleHelper.getTableRow(info); // split each row
@@ -103,6 +103,21 @@ function formatArticles(data) {
   return formated;
 }
 
+function formatPagination(data) {
+  let info = _.cloneDeep(data);
+  if (total_pages > 1) {
+    return;
+  }
+  info = articleHelper.getPagination(info);
+  info = articleHelper.getPaginateLi(info);
+  info = articleHelper.getTotalPages(info);
+  info = articleHelper.getTotalPagesValue(info);
+  if (info) {
+    total_pages = info;
+    fetchAllPages()
+  }
+}
+
 async function storeArticles(data) {
   for (let each of data) {
     if (articleHelper.ensure(each)) {
@@ -111,14 +126,28 @@ async function storeArticles(data) {
       await articleM.insertError({ data: JSON.stringify(each), message: 'incomplete-data-received' });
     }
   }
-  console.log(' ------------STORED---------------- ', data);
+  console.log(' ------------STORED---------------- ', data.length);
   return;
 }
 
 
-function prepareUrl(url) {
-  url = (`${url}?keyword=private+placement`); // this usrl to fetch all
-  // url = (`${url}?keyword=private+placement&dt_ht=${moment().format('DD/MM/YYYY')}`); // here we fetch only for today
+async function fetchAllPages() {
+  for (let p_num = 2; p_num < total_pages; p_num++) {
+    let url_to_go = prepareUrl(config.main_url.root, p_num);
+    await page.goto(url_to_go, { timeout: 60000, waitUntil: ["networkidle0", "networkidle2"] }); // go to website
+    await delay(2000);
+  }
+}
+
+function prepareUrl(url, p_num) {
+  url = (`${url}?keyword=private+placement`);
+  if (counter > 0) {
+    url = (`${url}&dt_ht=${moment().format('DD/MM/YYYY')}`); // here we fetch only for today
+  }
+  if (p_num) {
+    url = (`${url}&page=${p_num}`); // here we fetch only for today
+  }
+  console.log({ url })
   return url;
 }
 

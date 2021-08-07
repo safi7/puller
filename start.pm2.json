@@ -1,0 +1,18 @@
+{
+  "apps": [
+    {
+      "name": "p-article",
+      "script": "bin/start.babel.js",
+      "node_args": [
+        "--max_old_space_size=0"
+      ],
+      "autostart": false,
+      "autorestart": true,
+      "restart_delay": 15000,
+      "exp_backoff_restart_delay": 500,
+      "watch": false,
+      "instances": 1,
+      "exec_mode": "fork"
+    }
+  ]
+}

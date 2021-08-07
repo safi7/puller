@@ -17,9 +17,6 @@ async function main() {
   process.on("unhandledRejection", error);
 
   await base.start(); // hold until die
-
-  console.log("BYE.");
-  process.exit(0);
 }
 
 async function error(error) {
@@ -30,8 +27,7 @@ async function error(error) {
       break;
     default:
       await articleM.insertError({ data: JSON.stringify(error.message), message: 'error-at-bin-level' })
+      await base.start(); // hold until die
       console.log('error.message', error.message);
   }
-
-  process.exit(1);
 }

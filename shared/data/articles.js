@@ -1,11 +1,13 @@
 import _ from 'lodash';
-import articledb from '../models/mysql/articles-bursa';
+// import articledb from '../models/mysql/articles-bursa';
 
 export default new (class MiscController {
   constructor() { }
 
 
   async insertOne(data) {
+    // console.log('insertOne', data);
+    return;
     const model = articledb['bursa_articles'];
     const one = await model.upsert(data);
     console.log('[IN1]');
@@ -14,8 +16,11 @@ export default new (class MiscController {
 
   async insertError(err) {
     console.log('insertError', err);
+    return;
+    console.log('insertError', err);
     const model = articledb['errors'];
     return await model.create(err);
 
   }
+
 })();
