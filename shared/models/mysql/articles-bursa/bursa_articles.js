@@ -34,3 +34,4 @@ class BursalArticles extends BaseModel {
 }
 
 export default BursalArticles;
+~                                

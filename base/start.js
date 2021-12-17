@@ -18,13 +18,14 @@ async function start() {
       if (every_x_s) { every_x_s.unsubscribe }
 
       every_x_s = timer(0, 1000 * 60 * 30).subscribe(async (counter) => {
-        if (counter * 30 > 2 * 60) {
+        console.log('counter', counter);
+        if (counter > 6) {
           browser.close();
         }
-        if (counter === 0 || (counter * 30 * 60 * 1000 % config.every_xms) === 0) {
+        if (counter === 0 || ((counter / 2) % config.every_xms) === 0) {
           const page = await initialize();
           console.log('initialized');
-          await fetchArticles(page, f12, counter);
+          await fetchArticles(page, f12, counter / 16);
         }
       })
 
@@ -38,7 +39,7 @@ async function start() {
 
 async function initialize() {
   console.log(`[] initialize();`);
-  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] })
+  browser = await puppeteer.launch(config.puppeteer.launch)
   const pages = await browser.newPage();
   return await preparePage(pages);
 }

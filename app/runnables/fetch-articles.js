@@ -119,6 +119,7 @@ function formatPagination(data) {
 }
 
 async function storeArticles(data) {
+  data = data.filter(v => v.title?.toLowerCase().includes('private placement'));
   for (let each of data) {
     if (articleHelper.ensure(each)) {
       await articleM.insertOne(each);
@@ -132,7 +133,7 @@ async function storeArticles(data) {
 
 
 async function fetchAllPages() {
-  for (let p_num = 2; p_num < total_pages; p_num++) {
+  for (let p_num = 2; p_num <= total_pages; p_num++) {
     let url_to_go = prepareUrl(config.main_url.root, p_num);
     await page.goto(url_to_go, { timeout: 60000, waitUntil: ["networkidle0", "networkidle2"] }); // go to website
     await delay(2000);
@@ -140,9 +141,11 @@ async function fetchAllPages() {
 }
 
 function prepareUrl(url, p_num) {
-  url = (`${url}?keyword=private+placement`);
+  // url = (`${url}?keyword=private+placement`);
   if (counter > 0) {
-    url = (`${url}&dt_ht=${moment().format('DD/MM/YYYY')}`); // here we fetch only for today
+    url = (`${url}?dt_ht=${moment().subtract(10, 'hours').format('DD/MM/YYYY')}`); // here we fetch only for today
+  } else {
+    url = (`${url}?dt_ht=${moment().subtract(1, 'days').format('DD/MM/YYYY')}`); // here we fetch only for today
   }
   if (p_num) {
     url = (`${url}&page=${p_num}`); // here we fetch only for today
